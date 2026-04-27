@@ -1,13 +1,19 @@
 import { Request, Response } from "express";
 import * as productService from "../product/product.sercive";
+import { createProductSchema, updateProductSchema } from "../../schemas/product.schema";
+
 
 export const create = async (req: Request, res: Response) => {
-    try {
-        const product = await productService.createProduct(req.body);
-        res.json(product);
-    } catch (err) {
-        res.status(500).json({ error: "Failed to create product" });
+    const result = createProductSchema.safeParse(req.body);
+
+    if (!result.success) {
+        return res.status(400).json({
+            error: result.error.format(),
+        });
     }
+
+    const product = await productService.createProduct(result.data);
+    res.json(product);
 };
 
 export const getAll = async (_: Request, res: Response) => {
@@ -29,11 +35,21 @@ export const getById = async (req: Request, res: Response) => {
 export const update = async (req: Request, res: Response) => {
     const id = req.params.id as string;
 
-    if (!id) {
-        return res.status(400).json({ error: "ID is required" });
+    const result = updateProductSchema.safeParse(req.body);
+
+    if (!result.success) {
+        return res.status(400).json({
+            error: result.error.format(),
+        });
     }
 
-    const updated = await productService.updateProduct(id, req.body);
+    // 🔥 CLEAN undefined values
+    const cleanData = Object.fromEntries(
+        Object.entries(result.data).filter(([_, v]) => v !== undefined)
+    );
+
+    const updated = await productService.updateProduct(id, cleanData);
+
     res.json(updated);
 };
 
